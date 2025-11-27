@@ -48,9 +48,30 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy-backend
 
+    # ADD THIS SECTION to pass the backend URL to frontend
+    outputs:
+      backend-url: ${{ steps.get-backend-url.outputs.url }}
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Get backend URL
+      id: get-backend-url
+      run: |
+        BACKEND_URL=$(aws elasticbeanstalk describe-environments \
+          --environment-names ${{ env.BACKEND_ENV_NAME }} \
+          --query 'Environments[0].CNAME' \
+          --output text)
+        echo "Backend URL: https://$BACKEND_URL"
+        echo "url=https://$BACKEND_URL" >> $GITHUB_OUTPUT
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -62,22 +83,11 @@ jobs:
         cd frontend
         npm install
         
-        # Get the actual backend URL dynamically
-        BACKEND_URL=$(aws elasticbeanstalk describe-environments \
-          --environment-names ${{ env.BACKEND_ENV_NAME }} \
-          --query 'Environments[0].CNAME' \
-          --output text)
-        echo "REACT_APP_API_URL=https://$BACKEND_URL" > .env.production
-        echo "Using backend URL: https://$BACKEND_URL"
+        # Use the backend URL from the previous step
+        echo "REACT_APP_API_URL=${{ steps.get-backend-url.outputs.url }}" > .env.production
+        echo "Using backend URL: ${{ steps.get-backend-url.outputs.url }}"
         
         npm run build
-
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
 
     - name: Deploy frontend to S3
       run: |
