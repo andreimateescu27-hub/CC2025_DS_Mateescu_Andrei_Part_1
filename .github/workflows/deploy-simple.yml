@@ -82,11 +82,11 @@ jobs:
       run: |
         cd frontend
         npm install
-        
-        # Use the backend URL from the previous step
-        echo "REACT_APP_API_URL=${{ steps.get-backend-url.outputs.url }}" > .env.production
-        echo "Using backend URL: ${{ steps.get-backend-url.outputs.url }}"
-        
+
+        # Hardcode the HTTP URL for now (replace with your actual URL)
+        echo "REACT_APP_API_URL=http://cloud-app-backend-env.eba-imgjx3nv.us-east-1.elasticbeanstalk.com" > .env.production
+        echo "Using backend URL: http://cloud-app-backend-env.eba-imgjx3nv.us-east-1.elasticbeanstalk.com"
+
         npm run build
 
     - name: Deploy frontend to S3
